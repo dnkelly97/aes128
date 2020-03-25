@@ -42,6 +42,13 @@ inverse_s_box = [
 
 RC = ['01', '02', '04', '08', '10', '20', '40', '80', '1B', '36']
 
+def safe_hex(x, length=2):
+    ret = hex(x)[2:]
+    if len(ret) < length:
+        for i in range(length - len(ret)):
+            ret = '0' + ret
+    return ret
+
 def ip_to_matrix(ip):
     a, b, c, d = [], [], [], []
     i, j = 0, 2
@@ -95,9 +102,9 @@ def mult2(h):
     shifted = byte << 1
 
     if carry:
-        ret = xor(hex(shifted)[3:], hex(X8REDUX))
+        ret = xor(safe_hex(shifted)[1:], safe_hex(X8REDUX))
     else:
-        ret = hex(shifted)[2:]
+        ret = safe_hex(shifted)[2:]
 
     return ret
 
@@ -113,13 +120,13 @@ def mult3(h):
     shifted = byte << 1
 
     if carry:
-        m2 = xor(hex(shifted)[3:], hex(X8REDUX))
+        m2 = xor(safe_hex(shifted)[1:], safe_hex(X8REDUX))
     else:
-        m2 = hex(shifted)[2:]
+        m2 = safe_hex(shifted)
 
     m3 = int(m2, 16) ^ byte
 
-    return hex(m3)[2:]
+    return safe_hex(m3)
 
 # multiplies by 9. takes in and returns in hex form
 def mult9(h):
@@ -135,18 +142,17 @@ def mult9(h):
         carry = check_overflow(byte)
         byte = byte << 1
         if carry:
-            byte = xor(hex(byte[3:]), hex(SOMETHING[i]))
+            byte = xor(safe_hex(byte[1:]), safe_hex(SOMETHING[i]))
         else:
-            byte = hex(byte)[2:]
+            byte = safe_hex(byte)
         byte = int(byte, 16)
 
     byte = byte ^ og
 
-    return hex(byte)[2:]
+    return safe_hex(byte)
 
 # multiplies by 11
 def multB(h):
-    h = remove_prefix(h)
     byte = int(h, 16)
     og = byte
 
@@ -158,9 +164,9 @@ def multB(h):
         carry = check_overflow(byte)
         byte = byte << 1
         if carry:
-            byte = xor(hex(byte[3:]), hex(SOMETHING[i]))
+            byte = xor(safe_hex(byte[1:]), safe_hex(SOMETHING[i]))
         else:
-            byte = hex(byte)[2:]
+            byte = safe_hex(byte)
         byte = int(byte, 16)
 
     byte = byte ^ og
@@ -168,15 +174,12 @@ def multB(h):
     carry = check_overflow(byte)
     byte = byte << 1
     if carry:
-        byte = xor(hex(byte[3:]), hex(SOMETHING[i]))
+        byte = xor(safe_hex(byte[1:]), safe_hex(SOMETHING[i]))
     else:
-        byte = hex(byte)[2:]
+        byte = safe_hex(byte)
     byte = int(byte, 16)
 
     byte = byte ^ og
-
-
-
 
 def check_overflow(byte):
     mask = int('10000000', 2)
@@ -185,12 +188,12 @@ def check_overflow(byte):
     return False
 
 # XOR between two Hex values. Returns a string in Hex
-def xor(h1, h2):
+def xor(h1, h2, length=2):
 
     byte1 = int(h1, 16)
     byte2 = int(h2, 16)
 
-    ret = hex(byte1 ^ byte2)[2:]
+    ret = safe_hex(byte1 ^ byte2, length)
 
     return ret
 
@@ -221,7 +224,7 @@ def mix_column_multiplication(col):
                 xor_list.append(mult3(col[j]))
 
         new_val_dec = int(xor_list[0], 16) ^ int(xor_list[1], 16) ^ int(xor_list[2], 16) ^ int(xor_list[3], 16)
-        new_col.append(hex(new_val_dec)[2:])
+        new_col.append(safe_hex(new_val_dec))
 
     return new_col
 
@@ -234,7 +237,7 @@ def byte_sub_layer(state_matrix):
 
 def byte_sub(str_byte):
     byte = int(str_byte, 16)
-    return hex(s_box[byte])[2:]
+    return safe_hex(s_box[byte])
 
 def byte_sub_layer_inverse(state_matrix):
     for i in range(4):
@@ -243,7 +246,7 @@ def byte_sub_layer_inverse(state_matrix):
 
 def byte_sub_inverse(str_byte):
     byte = int(str_byte, 16)
-    return hex(inverse_s_box[byte])[2:]
+    return safe_hex(inverse_s_box[byte])
 
 
 
@@ -255,16 +258,38 @@ def shift_rows_inverse(state_matrix):
     for i in range(4):
         state_matrix[i] = state_matrix[i][4-i:] + state_matrix[i][:4-i]
 
+def g(byte_block, round):
+    shifted_byte_block = byte_block[2:] + byte_block[0:2]
+    transform = []
+    for i in range(4):
+        transform.append(byte_sub(shifted_byte_block[2*i:2*i + 2]))
+    transform[0] = xor(transform[0], RC[round - 1])
+    return transform[0] + transform[1] + transform[2] + transform[3]
+
+def compute_subkey_word_one(prev_w, round):
+    return xor(prev_w[0:8], g(prev_w[24:], round), length=8)
+
+def generate_subkeys(key):
+    w = [key, '', '', '', '', '', '', '', '', '', '']
+    for round in range(1, 11):
+        w[round] = compute_subkey_word_one(w[round - 1], round)
+        for j in range(1, 4):
+            w[round] = w[round] + xor(w[round][-8:], w[round - 1][8 * j:8 * (j + 1)], length=8)
+        print(w[round] == gt[round - 1])
+    return w
 
 
+key = "6920e299a5202a6d656e636869746f2a"
+gt = [
+'fa8807605fa82d0d3ac64e6553b2214f',
+'cf75838d90ddae80aa1be0e5f9a9c1aa',
+'180d2f1488d0819422cb6171db62a0db',
+'baed96ad323d173910f67648cb94d693',
+'881b4ab2ba265d8baad02bc36144fd50',
+'b34f195d096944d6a3b96f15c2fd9245',
+'a7007778ae6933ae0dd05cbbcf2dcefe',
+'ff8bccf251e2ff5c5c32a3e7931f6d19',
+'24b7182e7555e77229674495ba78298c',
+'ae127cdadb479ba8f220df3d4858f6b1']
 
-
-ip = "00112233445566778899aabbccddeeff"
-matrix = ip_to_matrix(ip)
-
-print('input matrix')
-print_matrix(matrix)
-print_matrix_line(matrix)
-
-
-matrix = mix_column_layer(matrix)
+generate_subkeys(key)
