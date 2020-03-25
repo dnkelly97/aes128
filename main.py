@@ -44,9 +44,12 @@ RC = ['01', '02', '04', '08', '10', '20', '40', '80', '1B', '36']
 
 def safe_hex(x, length=2):
     ret = hex(x)[2:]
+    print('in safe hex')
+    print(ret)
     if len(ret) < length:
         for i in range(length - len(ret)):
             ret = '0' + ret
+    print(ret)
     return ret
 
 def ip_to_matrix(ip):
@@ -94,6 +97,8 @@ def print_matrix_line(matrix):
 def mult2(h):
     carry = False
     byte = int(h, 16)
+    print('in mult2')
+    print(byte)
 
     mask = int('10000000', 2)
     if mask & byte != 0:
@@ -104,7 +109,7 @@ def mult2(h):
     if carry:
         ret = xor(safe_hex(shifted)[1:], safe_hex(X8REDUX))
     else:
-        ret = safe_hex(shifted)[2:]
+        ret = safe_hex(shifted)
 
     return ret
 
