@@ -211,10 +211,8 @@ def mix_column_layer(state_matrix):
 def mix_column_multiplication(col):
     new_col = []
     for i in range(4):
-
         xor_list = []
         mult_vals = MIXCOL[i]
-
         for j in range(4):
             if mult_vals[j] == 1:
                 xor_list.append(col[j])
@@ -222,13 +220,9 @@ def mix_column_multiplication(col):
                 xor_list.append(mult2(col[j]))
             elif mult_vals[j] == 3:
                 xor_list.append(mult3(col[j]))
-
         new_val_dec = int(xor_list[0], 16) ^ int(xor_list[1], 16) ^ int(xor_list[2], 16) ^ int(xor_list[3], 16)
         new_col.append(safe_hex(new_val_dec))
-
     return new_col
-
-
 
 def byte_sub_layer(state_matrix):
     for i in range(4):
@@ -248,13 +242,11 @@ def byte_sub_inverse(str_byte):
     byte = int(str_byte, 16)
     return safe_hex(inverse_s_box[byte])
 
-
-
-def shift_rows(state_matrix):
+def shift_rows_layer(state_matrix):
     for i in range(4):
         state_matrix[i] = state_matrix[i][i:] + state_matrix[i][:i]
 
-def shift_rows_inverse(state_matrix):
+def shift_rows_layer_inverse(state_matrix):
     for i in range(4):
         state_matrix[i] = state_matrix[i][4-i:] + state_matrix[i][:4-i]
 
@@ -275,21 +267,37 @@ def generate_subkeys(key):
         w[round] = compute_subkey_word_one(w[round - 1], round)
         for j in range(1, 4):
             w[round] = w[round] + xor(w[round][-8:], w[round - 1][8 * j:8 * (j + 1)], length=8)
-        print(w[round] == gt[round - 1])
+        # print(w[round] == gt[round - 1])
     return w
 
+def key_addition_layer(state_matrix, key):
+    key_matrix = ip_to_matrix(key)
+    for i in range(4):
+        for j in range(4):
+            state_matrix[i][j] = xor(state_matrix[i][j], key_matrix[i][j])
 
-key = "6920e299a5202a6d656e636869746f2a"
-gt = [
-'fa8807605fa82d0d3ac64e6553b2214f',
-'cf75838d90ddae80aa1be0e5f9a9c1aa',
-'180d2f1488d0819422cb6171db62a0db',
-'baed96ad323d173910f67648cb94d693',
-'881b4ab2ba265d8baad02bc36144fd50',
-'b34f195d096944d6a3b96f15c2fd9245',
-'a7007778ae6933ae0dd05cbbcf2dcefe',
-'ff8bccf251e2ff5c5c32a3e7931f6d19',
-'24b7182e7555e77229674495ba78298c',
-'ae127cdadb479ba8f220df3d4858f6b1']
+def state_matrix_to_ciphertext(state_matrix):
+    col_state_matrix = list(map(list, zip(*state_matrix)))
+    ciphertext = ''
+    for i in range(4):
+        for j in range(4):
+            ciphertext = ciphertext + col_state_matrix[i][j]
+    return ciphertext
 
-generate_subkeys(key)
+def encrypt(plaintext, key):
+    state_matrix = ip_to_matrix(plaintext)
+    subkeys = generate_subkeys(key)
+    key_addition_layer(state_matrix, key)
+    for round in range(1, 10):
+        byte_sub_layer(state_matrix)
+        shift_rows_layer(state_matrix)
+        mix_column_layer(state_matrix)
+        key_addition_layer(state_matrix, subkeys[round])
+    return state_matrix_to_ciphertext(state_matrix)
+
+plaintext = '00112233445566778899aabbccddeeff'
+key = '000102030405060708090a0b0c0d0e0f'
+
+ciphertext = encrypt(plaintext, key)
+
+print(ciphertext)
