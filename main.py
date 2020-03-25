@@ -1,6 +1,7 @@
 
 X8REDUX = int("00011011", 2)
 MIXCOL = [[2, 3, 1, 1], [1, 2, 3, 1], [1, 1, 2, 3], [3, 1, 1, 2]]
+MIXCOL_inverse = [['0E'], [], [], []]
 s_box = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -20,7 +21,7 @@ s_box = [
     0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16,
 ]
 
-inv_s_box = [
+inverse_s_box = [
     0x52, 0x09, 0x6A, 0xD5, 0x30, 0x36, 0xA5, 0x38, 0xBF, 0x40, 0xA3, 0x9E, 0x81, 0xF3, 0xD7, 0xFB,
     0x7C, 0xE3, 0x39, 0x82, 0x9B, 0x2F, 0xFF, 0x87, 0x34, 0x8E, 0x43, 0x44, 0xC4, 0xDE, 0xE9, 0xCB,
     0x54, 0x7B, 0x94, 0x32, 0xA6, 0xC2, 0x23, 0x3D, 0xEE, 0x4C, 0x95, 0x0B, 0x42, 0xFA, 0xC3, 0x4E,
@@ -73,6 +74,12 @@ def print_matrix(matrix):
     print(matrix[2])
     print(matrix[3])
 
+def print_matrix_line(matrix):
+    for i in range(4):
+        for j in range(4):
+            print(matrix[j][i], end="")
+    print()
+
 def remove_prefix(h):
     if h[0:2] == '0b' or h[0:2] == '0x':
         h = h[2:]
@@ -120,6 +127,69 @@ def mult3(h):
 
     return hex(m3)[2:]
 
+# multiplies by 9. takes in and returns in hex form
+def mult9(h):
+    h = remove_prefix(h)
+    byte = int(h, 16)
+    og = byte
+
+    SOMETHING = ['a', 'b', 'c']
+
+    #   X8
+    for i in range(3):
+        #   X2
+        carry = check_overflow(byte)
+        byte = byte << 1
+        if carry:
+            byte = xor(hex(byte[3:]), hex(SOMETHING[i]))
+        else:
+            byte = hex(byte)[2:]
+        byte = int(byte, 16)
+
+    byte = byte ^ og
+
+    return hex(byte)[2:]
+
+# multiplies by 11
+def multB(h):
+    h = remove_prefix(h)
+    byte = int(h, 16)
+    og = byte
+
+    SOMETHING = ['a', 'b']
+
+    #   X8
+    for i in range(2):
+        #   X2
+        carry = check_overflow(byte)
+        byte = byte << 1
+        if carry:
+            byte = xor(hex(byte[3:]), hex(SOMETHING[i]))
+        else:
+            byte = hex(byte)[2:]
+        byte = int(byte, 16)
+
+    byte = byte ^ og
+
+    carry = check_overflow(byte)
+    byte = byte << 1
+    if carry:
+        byte = xor(hex(byte[3:]), hex(SOMETHING[i]))
+    else:
+        byte = hex(byte)[2:]
+    byte = int(byte, 16)
+
+    byte = byte ^ og
+
+
+
+
+def check_overflow(byte):
+    mask = int('10000000', 2)
+    if mask & byte != 0:
+        return True
+    return False
+
 # XOR between two Hex values. Returns a string in Hex
 def xor(h1, h2):
 
@@ -142,9 +212,7 @@ def mix_column_layer(state_matrix):
     col_state_matrix[3] = mix_column_multiplication(col_state_matrix[3])
 
     state_matrix = list(map(list, zip(*col_state_matrix)))
-
-    return state_matrix
-
+    # return?
 
 def mix_column_multiplication(col):
     new_col = []
@@ -166,6 +234,8 @@ def mix_column_multiplication(col):
 
     return new_col
 
+
+
 def byte_sub_layer(state_matrix):
     for i in range(4):
         for j in range(4):
@@ -175,9 +245,27 @@ def byte_sub(str_byte):
     byte = int(str_byte, 16)
     return hex(s_box[byte])[2:]
 
+def byte_sub_layer_inverse(state_matrix):
+    for i in range(4):
+        for j in range(4):
+            state_matrix[i][j] = byte_sub_inverse(state_matrix[i][j])
+
+def byte_sub_inverse(str_byte):
+    byte = int(str_byte, 16)
+    return hex(inverse_s_box[byte])[2:]
+
+
+
 def shift_rows(state_matrix):
     for i in range(4):
         state_matrix[i] = state_matrix[i][i:] + state_matrix[i][:i]
+
+def shift_rows_inverse(state_matrix):
+    for i in range(4):
+        state_matrix[i] = state_matrix[i][4-i:] + state_matrix[i][:4-i]
+
+
+
 
 
 ip = "00112233445566778899aabbccddeeff"
@@ -185,5 +273,7 @@ matrix = ip_to_matrix(ip)
 
 print('input matrix')
 print_matrix(matrix)
+print_matrix_line(matrix)
+
 
 matrix = mix_column_layer(matrix)
