@@ -44,12 +44,9 @@ RC = ['01', '02', '04', '08', '10', '20', '40', '80', '1B', '36']
 
 def safe_hex(x, length=2):
     ret = hex(x)[2:]
-    print('in safe hex')
-    print(ret)
     if len(ret) < length:
         for i in range(length - len(ret)):
             ret = '0' + ret
-    print(ret)
     return ret
 
 def ip_to_matrix(ip):
@@ -97,8 +94,6 @@ def print_matrix_line(matrix):
 def mult2(h):
     carry = False
     byte = int(h, 16)
-    print('in mult2')
-    print(byte)
 
     mask = int('10000000', 2)
     if mask & byte != 0:
@@ -135,7 +130,6 @@ def mult3(h):
 
 # multiplies by 9. takes in and returns in hex form
 def mult9(h):
-    h = remove_prefix(h)
     byte = int(h, 16)
     og = byte
 
@@ -204,14 +198,12 @@ def xor(h1, h2, length=2):
 
 def mix_column_layer(state_matrix):
     col_state_matrix = list(map(list, zip(*state_matrix)))
-
     col_state_matrix[0] = mix_column_multiplication(col_state_matrix[0])
     col_state_matrix[1] = mix_column_multiplication(col_state_matrix[1])
     col_state_matrix[2] = mix_column_multiplication(col_state_matrix[2])
     col_state_matrix[3] = mix_column_multiplication(col_state_matrix[3])
-
     state_matrix = list(map(list, zip(*col_state_matrix)))
-    # return?
+    return state_matrix
 
 def mix_column_multiplication(col):
     new_col = []
@@ -290,14 +282,22 @@ def state_matrix_to_ciphertext(state_matrix):
     return ciphertext
 
 def encrypt(plaintext, key):
+    print("round[ 0 ].input:", plaintext)
+    print("round[ 0 ].k_sch:", key)
     state_matrix = ip_to_matrix(plaintext)
     subkeys = generate_subkeys(key)
     key_addition_layer(state_matrix, key)
-    for round in range(1, 10):
+    for round in range(1, 11):
+        print("round[", round, "].start:", state_matrix_to_ciphertext(state_matrix))
         byte_sub_layer(state_matrix)
+        print("round[", round, "].s_box:", state_matrix_to_ciphertext(state_matrix))
         shift_rows_layer(state_matrix)
-        mix_column_layer(state_matrix)
+        print("round[", round, "].s_row:", state_matrix_to_ciphertext(state_matrix))
+        if round < 10:
+            state_matrix = mix_column_layer(state_matrix)
+            print("round[", round, "].m_col:", state_matrix_to_ciphertext(state_matrix))
         key_addition_layer(state_matrix, subkeys[round])
+        print("round[", round, "].k_sch:", subkeys[round])
     return state_matrix_to_ciphertext(state_matrix)
 
 plaintext = '00112233445566778899aabbccddeeff'
