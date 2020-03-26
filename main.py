@@ -410,43 +410,33 @@ def encrypt(plaintext, key):
             print("round[", round, "].m_col:", state_matrix_to_ciphertext(state_matrix))
         key_addition_layer(state_matrix, subkeys[round])
         print("round[", round, "].k_sch:", subkeys[round])
+    print("round[10].output:", state_matrix_to_ciphertext(state_matrix))
     return state_matrix_to_ciphertext(state_matrix)
 
 def decrypt(ciphertext, key):
     print("round[ 0 ].iinput:", ciphertext)
     subkeys = generate_subkeys(key)
-    print("round[ 0 ].ik_sch:", subkeys[10])
     state_matrix = ip_to_matrix(ciphertext)
-    key_addition_layer_inverse(state_matrix, subkeys[10])
     for round in range(1, 11):
         print("round[", round, "].istart:", state_matrix_to_ciphertext(state_matrix))
-
-        byte_sub_layer_inverse(state_matrix)
-        print("round[", round, "].is_box:", state_matrix_to_ciphertext(state_matrix))
-
-        shift_rows_layer_inverse(state_matrix)
-        print("round[", round, "].is_row:", state_matrix_to_ciphertext(state_matrix))
-
-        if round < 10:
+        key_addition_layer_inverse(state_matrix, subkeys[11 - round])
+        print("round[", round,"].ik_sch:", subkeys[11 - round])
+        if round > 1:
             state_matrix = mix_column_layer_inverse(state_matrix)
-            print("round[", round, "].im_col:", state_matrix_to_ciphertext(state_matrix))
-
-        key_addition_layer_inverse(state_matrix, subkeys[10 - round])
-        print("round[", round, "].ik_sch:", subkeys[9 - round])
-
-
-
+            print("round[", round,"].im_col:", state_matrix_to_ciphertext(state_matrix))
+        shift_rows_layer_inverse(state_matrix)
+        print("round[", round,"].is_row:", state_matrix_to_ciphertext(state_matrix))
+        byte_sub_layer_inverse(state_matrix)
+        print("round[", round,"].is_box:", state_matrix_to_ciphertext(state_matrix))
     key_addition_layer_inverse(state_matrix, key)
+    print("round[10].ioutput:", state_matrix_to_ciphertext(state_matrix))
     return state_matrix_to_ciphertext(state_matrix)
 
 plaintext = '00112233445566778899aabbccddeeff'
 key = '000102030405060708090a0b0c0d0e0f'
 
 ciphertext = encrypt(plaintext, key)
-print(ciphertext)
-
-
-plaintext_ = decrypt(ciphertext, key)
-print(plaintext_)
+print()
+plaintext = decrypt(ciphertext, key)
 
 
