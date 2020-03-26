@@ -1,7 +1,7 @@
 
 X8REDUX = int("00011011", 2)
 MIXCOL = [[2, 3, 1, 1], [1, 2, 3, 1], [1, 1, 2, 3], [3, 1, 1, 2]]
-MIXCOL_inverse = [['0E'], [], [], []]
+MIXCOL_inverse = [['e', 'b', 'd', '9'], ['9', 'e', 'b', 'd'], ['d', '9', 'e', 'b'], ['b', 'd', '9', 'e']]
 s_box = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -128,24 +128,24 @@ def mult3(h):
 
     return safe_hex(m3)
 
-# multiplies by 9. takes in and returns in hex form
+# multiplies by 9
 def mult9(h):
     byte = int(h, 16)
     og = byte
 
-    SOMETHING = ['a', 'b', 'c']
-
     #   X8
     for i in range(3):
+
         #   X2
         carry = check_overflow(byte)
         byte = byte << 1
         if carry:
-            byte = xor(safe_hex(byte[1:]), safe_hex(SOMETHING[i]))
+            byte = xor(safe_hex(byte)[1:], safe_hex(X8REDUX))
         else:
             byte = safe_hex(byte)
         byte = int(byte, 16)
 
+    #   + 1
     byte = byte ^ og
 
     return safe_hex(byte)
@@ -155,30 +155,112 @@ def multB(h):
     byte = int(h, 16)
     og = byte
 
-    SOMETHING = ['a', 'b']
-
-    #   X8
+    #   X4 = 4x
     for i in range(2):
+
         #   X2
         carry = check_overflow(byte)
         byte = byte << 1
         if carry:
-            byte = xor(safe_hex(byte[1:]), safe_hex(SOMETHING[i]))
+            byte = xor(safe_hex(byte)[1:], safe_hex(X8REDUX))
         else:
             byte = safe_hex(byte)
         byte = int(byte, 16)
 
+    #   +1 = 5x
     byte = byte ^ og
 
+    #   x2 = 10x
     carry = check_overflow(byte)
     byte = byte << 1
     if carry:
-        byte = xor(safe_hex(byte[1:]), safe_hex(SOMETHING[i]))
+        byte = xor(safe_hex(byte)[1:], safe_hex(X8REDUX))
     else:
         byte = safe_hex(byte)
     byte = int(byte, 16)
 
+    #   +1 = 11x
     byte = byte ^ og
+
+    return safe_hex(byte)
+
+
+# multiplies by 13
+def multD(h):
+    byte = int(h, 16)
+    og = byte
+
+    #   x 2 = 2x
+    carry = check_overflow(byte)
+    byte = byte << 1
+    if carry:
+        byte = xor(safe_hex(byte)[1:], safe_hex(X8REDUX))
+    else:
+        byte = safe_hex(byte)
+    byte = int(byte, 16)
+
+    #   + 1 = 3x
+    byte = byte ^ og
+
+    #   x 4 = 12x
+    for i in range(2):
+
+        #   X2
+        carry = check_overflow(byte)
+        byte = byte << 1
+        if carry:
+            byte = xor(safe_hex(byte)[1:], safe_hex(X8REDUX))
+        else:
+            byte = safe_hex(byte)
+        byte = int(byte, 16)
+
+    #   + 1 = 13x
+    byte = byte ^ og
+
+    return safe_hex(byte)
+
+# multiplies by 14
+def multE(h):
+    byte = int(h, 16)
+    og = byte
+
+    #   x 2 = 2x
+    carry = check_overflow(byte)
+    byte = byte << 1
+    if carry:
+        byte = xor(safe_hex(byte)[1:], safe_hex(X8REDUX))
+    else:
+        byte = safe_hex(byte)
+    byte = int(byte, 16)
+
+    #   + 1 = 3x
+    byte = byte ^ og
+
+    #   og x 2 = 2x og
+    carry = check_overflow(og)
+    og = og << 1
+    if carry:
+        og = xor(safe_hex(og)[1:], safe_hex(X8REDUX))
+    else:
+        og = safe_hex(og)
+    og = int(og, 16)
+
+    #   x 4 = 12x
+    for i in range(2):
+
+        #   X2
+        carry = check_overflow(byte)
+        byte = byte << 1
+        if carry:
+            byte = xor(safe_hex(byte)[1:], safe_hex(X8REDUX))
+        else:
+            byte = safe_hex(byte)
+        byte = int(byte, 16)
+
+    #   + 2 = 14x
+    byte = byte ^ og
+
+    return safe_hex(byte)
 
 def check_overflow(byte):
     mask = int('10000000', 2)
@@ -205,6 +287,15 @@ def mix_column_layer(state_matrix):
     state_matrix = list(map(list, zip(*col_state_matrix)))
     return state_matrix
 
+def mix_column_layer_inverse(state_matrix):
+    col_state_matrix = list(map(list, zip(*state_matrix)))
+    col_state_matrix[0] = mix_column_multiplication_inverse(col_state_matrix[0])
+    col_state_matrix[1] = mix_column_multiplication_inverse(col_state_matrix[1])
+    col_state_matrix[2] = mix_column_multiplication_inverse(col_state_matrix[2])
+    col_state_matrix[3] = mix_column_multiplication_inverse(col_state_matrix[3])
+    state_matrix = list(map(list, zip(*col_state_matrix)))
+    return state_matrix
+
 def mix_column_multiplication(col):
     new_col = []
     for i in range(4):
@@ -217,6 +308,24 @@ def mix_column_multiplication(col):
                 xor_list.append(mult2(col[j]))
             elif mult_vals[j] == 3:
                 xor_list.append(mult3(col[j]))
+        new_val_dec = int(xor_list[0], 16) ^ int(xor_list[1], 16) ^ int(xor_list[2], 16) ^ int(xor_list[3], 16)
+        new_col.append(safe_hex(new_val_dec))
+    return new_col
+
+def mix_column_multiplication_inverse(col):
+    new_col = []
+    for i in range(4):
+        xor_list = []
+        mult_vals = MIXCOL_inverse[i]
+        for j in range(4):
+            if mult_vals[j] == '9':
+                xor_list.append(mult9(col[j]))
+            elif mult_vals[j] == 'b':
+                xor_list.append(multB(col[j]))
+            elif mult_vals[j] == 'd':
+                xor_list.append(multD(col[j]))
+            elif mult_vals[j] == 'e':
+                xor_list.append(multE(col[j]))
         new_val_dec = int(xor_list[0], 16) ^ int(xor_list[1], 16) ^ int(xor_list[2], 16) ^ int(xor_list[3], 16)
         new_col.append(safe_hex(new_val_dec))
     return new_col
@@ -273,6 +382,9 @@ def key_addition_layer(state_matrix, key):
         for j in range(4):
             state_matrix[i][j] = xor(state_matrix[i][j], key_matrix[i][j])
 
+def key_addition_layer_inverse(state_matrix, key):
+    key_addition_layer(state_matrix, key)
+
 def state_matrix_to_ciphertext(state_matrix):
     col_state_matrix = list(map(list, zip(*state_matrix)))
     ciphertext = ''
@@ -300,9 +412,41 @@ def encrypt(plaintext, key):
         print("round[", round, "].k_sch:", subkeys[round])
     return state_matrix_to_ciphertext(state_matrix)
 
+def decrypt(ciphertext, key):
+    print("round[ 0 ].iinput:", ciphertext)
+    subkeys = generate_subkeys(key)
+    print("round[ 0 ].ik_sch:", subkeys[10])
+    state_matrix = ip_to_matrix(ciphertext)
+    key_addition_layer_inverse(state_matrix, subkeys[10])
+    for round in range(1, 11):
+        print("round[", round, "].istart:", state_matrix_to_ciphertext(state_matrix))
+
+        byte_sub_layer_inverse(state_matrix)
+        print("round[", round, "].is_box:", state_matrix_to_ciphertext(state_matrix))
+
+        shift_rows_layer_inverse(state_matrix)
+        print("round[", round, "].is_row:", state_matrix_to_ciphertext(state_matrix))
+
+        if round < 10:
+            state_matrix = mix_column_layer_inverse(state_matrix)
+            print("round[", round, "].im_col:", state_matrix_to_ciphertext(state_matrix))
+
+        key_addition_layer_inverse(state_matrix, subkeys[10 - round])
+        print("round[", round, "].ik_sch:", subkeys[9 - round])
+
+
+
+    key_addition_layer_inverse(state_matrix, key)
+    return state_matrix_to_ciphertext(state_matrix)
+
 plaintext = '00112233445566778899aabbccddeeff'
 key = '000102030405060708090a0b0c0d0e0f'
 
 ciphertext = encrypt(plaintext, key)
-
 print(ciphertext)
+
+
+plaintext_ = decrypt(ciphertext, key)
+print(plaintext_)
+
+
