@@ -453,6 +453,6 @@ ciphertext = encrypt(plaintext, key)
 print()
 # key = '303132333435363738393A3B3C3D3E3F'
 # ciphertext = 'F4351503AA781C520267D690C42D1F43'
-plaintext = decrypt1(ciphertext, key)
+plaintext = decrypt(ciphertext, key)
 
 
