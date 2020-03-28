@@ -393,6 +393,11 @@ def state_matrix_to_ciphertext(state_matrix):
             ciphertext = ciphertext + col_state_matrix[i][j]
     return ciphertext
 
+def hex_to_ascii(hex_str):
+    bytes_object = bytes.fromhex(hex_str)
+    ascii_string = bytes_object.decode("ASCII")
+    return ascii_string
+
 def encrypt(plaintext, key):
     print("round[ 0 ].input:", plaintext)
     print("round[ 0 ].k_sch:", key)
@@ -432,11 +437,18 @@ def decrypt(ciphertext, key):
     print("round[10].ioutput:", state_matrix_to_ciphertext(state_matrix))
     return state_matrix_to_ciphertext(state_matrix)
 
+print("Deliverable 1: Appendix C.1 Example:\n")
 plaintext = '00112233445566778899aabbccddeeff'
 key = '000102030405060708090a0b0c0d0e0f'
 
 ciphertext = encrypt(plaintext, key)
 print()
 plaintext = decrypt(ciphertext, key)
+print()
 
+print("Deliverable 2: Second Decryption:\n")
+key2 = '303132333435363738393A3B3C3D3E3F'
+ciphertext2 = 'F4351503AA781C520267D690C42D1F43'
+plaintext2 = decrypt(ciphertext2, key2)
+print("ASCII Representation:", hex_to_ascii(plaintext2))
 
