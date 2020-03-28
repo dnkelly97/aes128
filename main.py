@@ -393,6 +393,14 @@ def state_matrix_to_ciphertext(state_matrix):
             ciphertext = ciphertext + col_state_matrix[i][j]
     return ciphertext
 
+def state_matrix_to_ciphertext_sr(state_matrix):
+    col_state_matrix = list(map(list, zip(*state_matrix)))
+    ciphertext = ''
+    for i in range(4):
+        for j in range(4):
+            ciphertext = ciphertext + col_state_matrix[i][j]
+    return '0' + ciphertext[:-1]
+
 def encrypt(plaintext, key):
     print("round[ 0 ].input:", plaintext)
     print("round[ 0 ].k_sch:", key)
@@ -418,16 +426,22 @@ def decrypt(ciphertext, key):
     subkeys = generate_subkeys(key)
     state_matrix = ip_to_matrix(ciphertext)
     for round in range(1, 11):
-        print("round[", round, "].istart:", state_matrix_to_ciphertext(state_matrix))
         key_addition_layer_inverse(state_matrix, subkeys[11 - round])
-        print("round[", round,"].ik_sch:", subkeys[11 - round])
+        print("round[", round-1,"].ik_sch:", subkeys[11 - round])
+
+        if round == 1:
+            print("round[", round, "].istart:", state_matrix_to_ciphertext(state_matrix))
+        else:
+            print("round[", round - 1, "].ik_add:", state_matrix_to_ciphertext(state_matrix))
+
         if round > 1:
             state_matrix = mix_column_layer_inverse(state_matrix)
-            print("round[", round,"].im_col:", state_matrix_to_ciphertext(state_matrix))
+            print("round[", round,"].istart:", state_matrix_to_ciphertext(state_matrix))
         shift_rows_layer_inverse(state_matrix)
         print("round[", round,"].is_row:", state_matrix_to_ciphertext(state_matrix))
         byte_sub_layer_inverse(state_matrix)
         print("round[", round,"].is_box:", state_matrix_to_ciphertext(state_matrix))
+    print("round[10].iksch:", state_matrix_to_ciphertext_sr(state_matrix))
     key_addition_layer_inverse(state_matrix, key)
     print("round[10].ioutput:", state_matrix_to_ciphertext(state_matrix))
     return state_matrix_to_ciphertext(state_matrix)
@@ -437,6 +451,8 @@ key = '000102030405060708090a0b0c0d0e0f'
 
 ciphertext = encrypt(plaintext, key)
 print()
-plaintext = decrypt(ciphertext, key)
+# key = '303132333435363738393A3B3C3D3E3F'
+# ciphertext = 'F4351503AA781C520267D690C42D1F43'
+plaintext = decrypt1(ciphertext, key)
 
 
